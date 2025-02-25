@@ -180,6 +180,17 @@ void DataStream::saveMsg(const std::string& msg) {
     }
 }
 
+void DataStream::saveLine(const std::string& line) {
+    int old_size = m_buf.size();
+    m_buf.append(line.c_str());
+    m_buf.append("\n");
+    for (int new_size = m_buf.size(); old_size < new_size; old_size++) {
+        if (m_buf[old_size] == '\n') {
+            m_lineOffsets.push_back(old_size + 1);
+        }
+    }
+}
+
 void DataStream::pollSerial() {
     try {
         if (m_serial && m_serial->isOpen() && m_serial->available() > 0) {
@@ -194,26 +205,39 @@ void DataStream::pollSerial() {
 }
 
 void DataStream::parseFile() {
+    clear();
     std::ifstream file(m_filePath);
     if (!file.is_open()) { m_filePath.clear(); return; }
     switch (m_fileType) {
         case FileType_TimeSeries:
             for (std::string line; std::getline(file, line);) {
-                saveMsg(line + '\n');
+                saveLine(line);
                 size_t firstComma = line.find_first_of(',');
-                if (firstComma == std::string::npos) { continue; }
+                if (firstComma == std::string::npos) { continue; } // skip lines without a comma
                 size_t secondComma = line.find_first_of(',', firstComma + 1);
-                if (secondComma == std::string::npos) { continue; }
-                uint32_t time = std::stoi(line.substr(0, firstComma));
+                if (secondComma == std::string::npos) { continue; } // skip lines with only 1 comma
+                if (line.find_first_of(',', secondComma + 1) != std::string::npos) { continue; } // skip lines with more than 2 commas
+                uint32_t time;
+                try { time = std::stoul(line.substr(0, firstComma)); } catch (std::invalid_argument& e) { continue; } // skip lines with non-numeric time
                 std::string name = line.substr(firstComma + 1, secondComma - firstComma - 1);
                 float value;
-                try { value = std::stof(line.substr(secondComma + 1)); } catch (std::invalid_argument& e) { continue; }
+                try { value = std::stof(line.substr(secondComma + 1)); } catch (std::invalid_argument& e) { continue; } // skip lines with non-numeric value
                 int idx = plotItemIdx(name);
                 m_plotItems[idx].data.emplace_back(value);
                 m_plotItems[idx].support.emplace_back(time);
             }
             break;
         case FileType_CSV:
+            for (std::string line; std::getline(file, line);) {
+                saveLine(line);
+            }
+            rapidcsv::Document csv(m_filePath, rapidcsv::LabelParams(), rapidcsv::SeparatorParams(), rapidcsv::ConverterParams(true));
+            for (int i = 0; i < csv.GetColumnCount(); i++) {
+                std::string name = csv.GetColumnName(i);
+                if (name.empty()) { continue; } // skip empty columns (e.g. trailing commas in CSV file)
+                int idx = plotItemIdx(name);
+                m_plotItems[idx].data = csv.GetColumn<float>(i);
+            }
             break;
     }
 }

@@ -125,6 +125,9 @@ void PlotWindow::draw() {
                 int count = (int)std::min(p->support.size(), p->data.size());
                 ImPlot::SetNextLineStyle(p->color);
                 ImPlot::PlotLine(p->name.c_str(), &p->support[0], &p->data[0], count);
+            } else {
+                ImPlot::SetNextLineStyle(p->color);
+                ImPlot::PlotLine(p->name.c_str(), &p->data[0], p->data.size());
             }
 
             // allow legend item labels to be DND sources

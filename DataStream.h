@@ -10,11 +10,12 @@
 
 #include <serial/serial.h>
 #include <nfd.h>
+#include "includes/rapidcsv.h"
 #include <DeviceINQ.h>
+#include <BluetoothException.h>
 #include <BTSerialPortBinding.h>
 
 #include "MicroDebug.h"
-#include "BluetoothException.h"
 
 enum DataStreamType {
     DataStreamType_SERIAL,
@@ -78,6 +79,7 @@ private:
     void pollWebSocket();
 
     void saveMsg(const std::string& msg);
+    void saveLine(const std::string& line);
     int plotItemIdx(const std::string& name);
     void parseMsg(const std::string& msg, bool multiLine = false);
 
