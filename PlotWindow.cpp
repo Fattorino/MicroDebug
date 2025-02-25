@@ -92,6 +92,17 @@ void PlotWindow::draw() {
             if (ImGui::BeginPopupContextItem()) {
                 ImGui::ColorEdit3("Color", &pi.color.x);
                 ImGui::Combo("Axis", reinterpret_cast<int *>(&pi.axis), "Y1\0Y2\0Y3\0\0");
+                if (ImGui::InputFloat2("Scaling (Y/X)", &pi.auxScaling.x)) {
+                    for (int j = 0; j < pi.data.size(); j++) {
+                        pi.data[j] /= pi.scaling.x;
+                        pi.data[j] *= pi.auxScaling.x;
+                    }
+                    for (int j = 0; j < pi.support.size(); j++) {
+                        pi.support[j] /= pi.scaling.x;
+                        pi.support[j] *= pi.auxScaling.x;
+                    }
+                    pi.scaling = pi.auxScaling;
+                }
                 ImGui::EndPopup();
             }
         }

@@ -51,6 +51,8 @@ struct PlotItem {
     ImVec4 color = RandomColor();
     std::vector<float> data;
     std::vector<float> support;
+    ImVec2 scaling = ImVec2(1.0f, 1.0f);
+    ImVec2 auxScaling = ImVec2(1.0f, 1.0f);
 };
 
 class DataStream {
