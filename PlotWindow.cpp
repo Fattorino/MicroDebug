@@ -30,6 +30,16 @@ void PlotWindow::draw() {
         ImGui::InputText("Title", &m_plotTitle);
         ImGui::EndDisabled();
 
+        ImGui::Separator();
+        if (ImGui::Button("Clear X axis")) {
+            m_xAxis = nullptr;
+        }
+        ImGui::SameLine();
+        if (ImGui::Button("Clear all")) {
+            m_xAxis = nullptr;
+            m_yAxis.clear();
+        }
+
         ImGui::EndPopup();
     }
 
