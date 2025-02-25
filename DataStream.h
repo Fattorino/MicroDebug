@@ -6,18 +6,26 @@
 #include <memory>
 #include <iostream>
 #include <chrono>
+#include <fstream>
 
 #include <serial/serial.h>
+#include <nfd.h>
 #include <DeviceINQ.h>
 #include <BTSerialPortBinding.h>
 
 #include "MicroDebug.h"
 #include "BluetoothException.h"
 
-enum DataStreamType : int {
+enum DataStreamType {
     DataStreamType_SERIAL,
+    DataStreamType_FILE,
     DataStreamType_BLUETOOTH,
     DataStreamType_WEB_SOCKET
+};
+
+enum FileType {
+    FileType_TimeSeries,
+    FileType_CSV
 };
 
 template <typename T>
@@ -41,6 +49,7 @@ struct PlotItem {
     ImAxis axis = -1;
     ImVec4 color = RandomColor();
     std::vector<float> data;
+    std::vector<float> support;
 };
 
 class DataStream {
@@ -59,10 +68,12 @@ public:
 
 private:
     void drawSerial();
+    void drawFile();
     void drawBluetooth();
     void drawWebSocket();
 
     void pollSerial();
+    void parseFile();
     void pollBluetooth();
     void pollWebSocket();
 
@@ -73,7 +84,7 @@ private:
     std::string m_name = "New Data Stream";
     bool m_connected = false;
 
-    const char* m_streamTypeOptions = "SERIAL\0BLUETOOTH\0WEB SOCKET\0\0";
+    const char* m_streamTypeOptions = "SERIAL\0FILE\0BLUETOOTH\0WEB SOCKET\0\0";
     DataStreamType m_type = DataStreamType_SERIAL;
 
     ImGuiTextBuffer m_buf;
@@ -90,6 +101,10 @@ private:
     // std::string m_stopBits;
     // std::string m_dataBits;
     // std::string m_flowControl;
+
+    const char* m_fileTypeOptions = "Time Series\0CSV\0\0";
+    FileType m_fileType = FileType_TimeSeries;
+    std::string m_filePath;
 
     std::unique_ptr<DeviceINQ> m_BL_inquiry;
     std::vector<device> m_BL_devices;

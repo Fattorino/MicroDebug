@@ -66,7 +66,20 @@ int main(int, char**)
     ImGuiID side_bar_dock = 0;
 
     std::thread pollThread([]() {
-        while (true) { microDebug.pollDataStreams(); }
+        while (true) {
+            microDebug.pollDataStreams();
+            std::this_thread::sleep_for(std::chrono::milliseconds(20));
+        }
+
+//        while (true) {
+//            auto start = std::chrono::high_resolution_clock::now();
+//            microDebug.pollDataStreams();
+//            do {
+//                std::this_thread::yield();
+//            } while (std::chrono::high_resolution_clock::now() - start < std::chrono::milliseconds(1));
+//        }
+
+//        while (true) { microDebug.pollDataStreams(); }
     });
 
     // Main loop

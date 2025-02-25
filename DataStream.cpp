@@ -46,6 +46,30 @@ void DataStream::drawSerial() {
     }
 }
 
+void DataStream::drawFile() {
+    ImGui::Combo("File Type", reinterpret_cast<int *>(&m_fileType), m_fileTypeOptions);
+    if (ImGui::InputText("##File Path", &m_filePath, ImGuiInputTextFlags_EnterReturnsTrue)) {
+        parseFile();
+    }
+    ImGui::SameLine();
+    if (ImGui::Button("Browse")) {
+        if (NFD_Init() == NFD_OKAY) {
+            nfdu8char_t *outPath;
+            nfdu8filteritem_t filters[2] = {{"Log file", "csv,txt"}};
+            nfdopendialogu8args_t args = {0};
+            args.filterList = filters;
+            args.filterCount = 1;
+            nfdresult_t result = NFD_OpenDialogU8_With(&outPath, &args);
+            if (result == NFD_OKAY) {
+                m_filePath = outPath;
+                NFD_FreePathU8(outPath);
+                parseFile();
+            }
+            NFD_Quit();
+        }
+    }
+}
+
 void DataStream::drawBluetooth() {
     if (ImGui::Button("Fetch devices")) {
         m_BL_devices = m_BL_inquiry->Inquire();
@@ -110,6 +134,9 @@ void DataStream::draw() {
             case DataStreamType_SERIAL:
                 drawSerial();
                 break;
+            case DataStreamType_FILE:
+                drawFile();
+                break;
             case DataStreamType_BLUETOOTH:
                 drawBluetooth();
                 break;
@@ -163,6 +190,31 @@ void DataStream::pollSerial() {
         }
     } catch (serial::IOException& e) {
         std::cerr << e.what() << std::endl;
+    }
+}
+
+void DataStream::parseFile() {
+    std::ifstream file(m_filePath);
+    if (!file.is_open()) { m_filePath.clear(); return; }
+    switch (m_fileType) {
+        case FileType_TimeSeries:
+            for (std::string line; std::getline(file, line);) {
+                saveMsg(line + '\n');
+                size_t firstComma = line.find_first_of(',');
+                if (firstComma == std::string::npos) { continue; }
+                size_t secondComma = line.find_first_of(',', firstComma + 1);
+                if (secondComma == std::string::npos) { continue; }
+                uint32_t time = std::stoi(line.substr(0, firstComma));
+                std::string name = line.substr(firstComma + 1, secondComma - firstComma - 1);
+                float value;
+                try { value = std::stof(line.substr(secondComma + 1)); } catch (std::invalid_argument& e) { continue; }
+                int idx = plotItemIdx(name);
+                m_plotItems[idx].data.emplace_back(value);
+                m_plotItems[idx].support.emplace_back(time);
+            }
+            break;
+        case FileType_CSV:
+            break;
     }
 }
 

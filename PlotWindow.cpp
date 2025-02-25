@@ -18,18 +18,7 @@ void PlotWindow::draw() {
             ImGui::EndCombo();
         }
 
-        if (ImGui::BeginCombo("Mode", m_plotMode == PlotMode_WINDOW ? "Window" : m_plotMode == PlotMode_FREE ? "Free" : "Full")) {
-            if (ImGui::Selectable("Window", m_plotMode == PlotMode_WINDOW)) {
-                m_plotMode = PlotMode_WINDOW;
-            }
-            if (ImGui::Selectable("Free", m_plotMode == PlotMode_FREE)) {
-                m_plotMode = PlotMode_FREE;
-            }
-            if (ImGui::Selectable("Full", m_plotMode == PlotMode_FULL)) {
-                m_plotMode = PlotMode_FULL;
-            }
-            ImGui::EndCombo();
-        }
+        ImGui::Combo("Mode", reinterpret_cast<int*>(&m_plotMode), "Window\0Free\0Full\0\0");
 
         if (m_plotMode == PlotMode_WINDOW) {
             ImGui::InputFloat("Window start", &m_windowStart);
@@ -116,19 +105,24 @@ void PlotWindow::draw() {
     if (m_plotTitle.empty()) { m_plotTitle = m_name; }
     if (ImPlot::BeginPlot(m_plotTitle.c_str(), ImVec2(-1, -1), !m_showTitle)) { // when false, !m_showTitle -> 1 -> ImPlotFlags_NoTitle
         ImPlot::SetupAxis(ImAxis_X1, m_xAxis == nullptr ? "[drop here]" : m_xAxis->name.c_str());
-        if (m_xAxis) {
-            for (int i = 0; i < m_yAxis.size(); i++) {
-                PlotItem* p = m_yAxis[i];
+        for (int i = 0; i < m_yAxis.size(); i++) {
+            PlotItem* p = m_yAxis[i];
+            if (m_xAxis) {
                 int count = (int)std::min(m_xAxis->data.size(), p->data.size());
                 ImPlot::SetNextLineStyle(p->color);
                 ImPlot::PlotLine(p->name.c_str(), &m_xAxis->data[0], &p->data[0], count);
-                // allow legend item labels to be DND sources
-                if (ImPlot::BeginDragDropSourceItem(p->name.c_str())) {
-                    ImGui::SetDragDropPayload("PlotItemRemove", &i, sizeof(int));
-                    ImPlot::ItemIcon(p->color); ImGui::SameLine();
-                    ImGui::TextUnformatted(p->name.c_str());
-                    ImPlot::EndDragDropSource();
-                }
+            } else if (!p->support.empty()) {
+                int count = (int)std::min(p->support.size(), p->data.size());
+                ImPlot::SetNextLineStyle(p->color);
+                ImPlot::PlotLine(p->name.c_str(), &p->support[0], &p->data[0], count);
+            }
+
+            // allow legend item labels to be DND sources
+            if (ImPlot::BeginDragDropSourceItem(p->name.c_str())) {
+                ImGui::SetDragDropPayload("PlotItemRemove", &i, sizeof(int));
+                ImPlot::ItemIcon(p->color); ImGui::SameLine();
+                ImGui::TextUnformatted(p->name.c_str());
+                ImPlot::EndDragDropSource();
             }
         }
 
@@ -157,4 +151,8 @@ void PlotWindow::draw() {
     
     ImGui::Columns(1);
     ImGui::End();
+}
+
+void PlotWindow::linkStream(DataStream* dataStream) {
+    m_dataStream = dataStream;
 }

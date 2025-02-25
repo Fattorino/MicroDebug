@@ -11,6 +11,7 @@ class ConsoleWindow {
 public:
     ConsoleWindow();
     void draw();
+    void linkStream(DataStream* dataStream);
 
 private:
     std::string m_title;

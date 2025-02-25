@@ -22,18 +22,14 @@ void Settings::viewsSettingsMenu() {
 MicroDebug::MicroDebug() {
     m_dataStreams.emplace_back("Stream 1");
     m_consoles.emplace_back();
+    m_consoles.back().linkStream(&m_dataStreams.back());
 }
 
 void MicroDebug::dataStreamsWindow() {
     ImGui::Begin("Data streams");
     for (auto& ds : m_dataStreams) {
         ds.draw();
-//        if (ds != m_dataStreams.back()) {
-//            ImGui::Spacing();
-//            ImGui::Separator();
-//            ImGui::Separator();
-//            ImGui::Spacing();
-//        }
+        ImGui::Spacing(); ImGui::Separator(); ImGui::Separator(); ImGui::Spacing();
     }
     ImGui::End();
 }

@@ -21,6 +21,16 @@ void ConsoleWindow::draw() {
         ImGui::EndPopup();
     }
 
+    // Quick combo for first setup
+    if (!m_dataStream && ImGui::BeginCombo("Stream", m_dataStream ? m_dataStream->getName().c_str() : "None")) {
+        for (auto& dataStream : microDebug.getDataStreams()) {
+            if (ImGui::Selectable(dataStream.getName().c_str(), m_dataStream == &dataStream)) {
+                m_dataStream = &dataStream;
+            }
+        }
+        ImGui::EndCombo();
+    }
+
     m_filter.Draw("##Filter", -1);
     ImGui::Separator();
 
@@ -46,4 +56,8 @@ void ConsoleWindow::draw() {
     }
     ImGui::EndChild();
     ImGui::End();
+}
+
+void ConsoleWindow::linkStream(DataStream *dataStream) {
+    m_dataStream = dataStream;
 }
