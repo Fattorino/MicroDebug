@@ -30,6 +30,8 @@ void PlotWindow::draw() {
         ImGui::InputText("Title", &m_plotTitle);
         ImGui::EndDisabled();
 
+        ImGui::Checkbox("Show list", &m_showPlotItemList);
+
         ImGui::Separator();
         if (ImGui::Button("Clear X axis")) {
             m_xAxis = nullptr;
@@ -62,36 +64,48 @@ void PlotWindow::draw() {
         return;
     }
 
-    ImGui::Columns(2);
-    if (!aux_init_col_width) {
-        aux_init_col_width = true;
-        ImGui::SetColumnWidth(-1, ImGui::GetWindowWidth() * 0.1f);
-    }
+    if (m_showPlotItemList) {
+        ImGui::Columns(2);
+        if (!aux_init_col_width) {
+            aux_init_col_width = true;
+            ImGui::SetColumnWidth(-1, ImGui::GetWindowWidth() * 0.1f);
+        }
 
-    ImGui::BeginChild("PlotItemsList");
-    for (int i = 0; i < m_dataStream->getPlotItems().size(); i++) {
-        auto& pi = m_dataStream->getPlotItems()[i];
-        ImPlot::ItemIcon(pi.color); ImGui::SameLine();
-        ImGui::Selectable(pi.name.c_str(), false, 0, ImVec2(100, 0));
-        if (ImGui::BeginDragDropSource(ImGuiDragDropFlags_None)) {
-            ImGui::SetDragDropPayload("PlotItem", &i, sizeof(PlotItem));
-            ImPlot::ItemIcon(pi.color); ImGui::SameLine();
-            ImGui::TextUnformatted(pi.name.c_str());
-            ImGui::EndDragDropSource();
+        ImGui::BeginChild("PlotItemsList");
+        m_plotItemFilter.Draw("##Filter", -1);
+        ImGui::Separator();
+        for (int i = 0; i < m_dataStream->getPlotItems().size(); i++) {
+            auto &pi = m_dataStream->getPlotItems()[i];
+            if (!m_plotItemFilter.PassFilter(pi.name.c_str())) {
+                continue;
+            }
+            ImPlot::ItemIcon(pi.color);
+            ImGui::SameLine();
+            ImGui::Selectable(pi.name.c_str());
+            if (ImGui::BeginDragDropSource(ImGuiDragDropFlags_None)) {
+                ImGui::SetDragDropPayload("PlotItem", &i, sizeof(PlotItem));
+                ImPlot::ItemIcon(pi.color);
+                ImGui::SameLine();
+                ImGui::TextUnformatted(pi.name.c_str());
+                ImGui::EndDragDropSource();
+            }
+            if (ImGui::BeginPopupContextItem()) {
+                ImGui::ColorEdit3("Color", &pi.color.x);
+                ImGui::Combo("Axis", reinterpret_cast<int *>(&pi.axis), "Y1\0Y2\0Y3\0\0");
+                ImGui::EndPopup();
+            }
         }
-    }
-    ImGui::EndChild();
-    if (ImGui::BeginDragDropTarget()) {
-        if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("PlotItemRemove")) {
-            int i = *static_cast<int*>(payload->Data);
-            PlotItem* p = &m_dataStream->getPlotItems()[i];
-            auto it = std::find(m_yAxis.begin(), m_yAxis.end(), p);
-            m_yAxis.erase(it);
+        ImGui::EndChild();
+        if (ImGui::BeginDragDropTarget()) {
+            if (const ImGuiPayload *payload = ImGui::AcceptDragDropPayload("PlotItemRemove")) {
+                int i = *static_cast<int *>(payload->Data);
+                m_yAxis.erase(m_yAxis.begin() + i);
+            }
+            ImGui::EndDragDropTarget();
         }
-        ImGui::EndDragDropTarget();
+
+        ImGui::NextColumn();
     }
-    
-    ImGui::NextColumn();
 
     switch (m_plotMode) {
         case PlotMode_WINDOW: {
@@ -115,18 +129,34 @@ void PlotWindow::draw() {
     if (m_plotTitle.empty()) { m_plotTitle = m_name; }
     if (ImPlot::BeginPlot(m_plotTitle.c_str(), ImVec2(-1, -1), !m_showTitle)) { // when false, !m_showTitle -> 1 -> ImPlotFlags_NoTitle
         ImPlot::SetupAxis(ImAxis_X1, m_xAxis == nullptr ? "[drop here]" : m_xAxis->name.c_str());
+        for (PlotItem* p : m_yAxis) {
+            if (p->axis == 1) {
+                ImPlot::SetupAxis(ImAxis_Y2, nullptr, ImPlotAxisFlags_Opposite);
+                break;
+            }
+        }
+        for (PlotItem* p : m_yAxis) {
+            if (p->axis == 2) {
+                ImPlot::SetupAxis(ImAxis_Y3, nullptr, ImPlotAxisFlags_Opposite);
+                break;
+            }
+        }
+
         for (int i = 0; i < m_yAxis.size(); i++) {
             PlotItem* p = m_yAxis[i];
             if (m_xAxis) {
                 int count = (int)std::min(m_xAxis->data.size(), p->data.size());
                 ImPlot::SetNextLineStyle(p->color);
+                ImPlot::SetAxis(ImAxis_Y1 + p->axis);
                 ImPlot::PlotLine(p->name.c_str(), &m_xAxis->data[0], &p->data[0], count);
             } else if (!p->support.empty()) {
                 int count = (int)std::min(p->support.size(), p->data.size());
                 ImPlot::SetNextLineStyle(p->color);
+                ImPlot::SetAxis(ImAxis_Y1 + p->axis);
                 ImPlot::PlotLine(p->name.c_str(), &p->support[0], &p->data[0], count);
             } else {
                 ImPlot::SetNextLineStyle(p->color);
+                ImPlot::SetAxis(ImAxis_Y1 + p->axis);
                 ImPlot::PlotLine(p->name.c_str(), &p->data[0], p->data.size());
             }
 
@@ -161,8 +191,10 @@ void PlotWindow::draw() {
         }
         ImPlot::EndPlot();
     }
-    
-    ImGui::Columns(1);
+
+    if (m_showPlotItemList) {
+        ImGui::Columns(1);
+    }
     ImGui::End();
 }
 

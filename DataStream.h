@@ -47,7 +47,7 @@ inline ImVec4 RandomColor() {
 struct PlotItem {
     PlotItem(const std::string& name) : name(name) {}
     std::string name;
-    ImAxis axis = -1;
+    ImAxis axis = 0;
     ImVec4 color = RandomColor();
     std::vector<float> data;
     std::vector<float> support;
